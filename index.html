@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>التقاط موقع المسجد</title>
+<style>
+:root{--forest-0:#002623;--forest-1:#054239;--gold:#988561;--gold-2:#B9A779;--cream:#EDEBE0;--ink:#3D3A3B;--maroon:#4A151E;
+ --font:"itf Qomra Arabic",Tahoma,sans-serif;box-sizing:border-box}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:#F7F6F0;color:var(--ink);line-height:1.7;
+ padding:env(safe-area-inset-top,0) 16px env(safe-area-inset-bottom,0)}
+.wrap{max-width:560px;margin:0 auto;padding:20px 0 40px}
+h1{color:var(--forest-1);font-size:1.3rem;margin:.2rem 0 1rem}
+h2{color:var(--maroon);font-size:1rem;margin:1.4rem 0 .4rem}
+.card{background:#fff;border:1px solid var(--cream);border-radius:14px;padding:18px;margin-bottom:14px}
+button{font-family:inherit;font-size:1rem;border-radius:12px;border:0;padding:14px 18px;cursor:pointer;width:100%}
+.main{background:var(--forest-1);color:#fff;font-size:1.15rem;padding:22px}
+.main:disabled{background:#9aa8a4}
+.ghost{background:var(--cream);color:var(--forest-1);margin-top:10px}
+.go{background:var(--gold);color:var(--forest-0);font-weight:600;margin-top:12px}
+input{font-family:inherit;width:100%;padding:12px;border:1px solid var(--gold-2);border-radius:10px;font-size:.95rem}
+.coords{direction:ltr;text-align:center;font-size:1.5rem;color:var(--forest-1);letter-spacing:.5px;margin:10px 0 2px}
+.acc{text-align:center;font-size:.9rem}
+.good{color:var(--forest-1)} .bad{color:var(--maroon)}
+.muted{color:#7a7577;font-size:.85rem}
+ol{padding-right:18px;margin:.4rem 0} li{margin-bottom:.3rem}
+details summary{cursor:pointer;color:var(--forest-1)}
+.err{background:#F6ECEC;border-right:4px solid var(--maroon);padding:10px 14px;border-radius:8px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>التقاط موقع المسجد</h1>
+
+<div class="card" id="capture">
+  <button class="main" id="btn">التقط الموقع</button>
+  <div class="coords" id="coords">—</div>
+  <div class="acc muted" id="acc">اضغط الزر وأنت واقف أمام مدخل المسجد في الهواء الطلق</div>
+  <button class="go" id="go" hidden>افتح الاستمارة بالموقع مُعبَّأ</button>
+  <button class="ghost" id="copy" hidden>انسخ الإحداثيات</button>
+  <div id="err"></div>
+</div>
+
+<details class="card" id="setup">
+  <summary>الإعداد — مرة واحدة فقط، يقوم به المشرف</summary>
+  <ol>
+    <li>افتح استمارة Google من رابط التعديل ← النقاط الثلاث (⋮) ← <b>Get pre-filled link</b>.</li>
+    <li>في خانة خط العرض اكتب <b>11</b>، وفي خانة خط الطول اكتب <b>22</b>، ثم اضغط <b>Get link</b> ثم <b>Copy link</b>.</li>
+    <li>الصق الرابط هنا واضغط «جهّز الرابط»:</li>
+  </ol>
+  <input id="pre" placeholder="الصق الرابط المُعبَّأ مسبقًا هنا" inputmode="url">
+  <button class="ghost" id="make">جهّز الرابط</button>
+  <div id="out"></div>
+</details>
+
+<p class="muted">تعمل هذه الصفحة على هواتف الفريق بعد رفعها على استضافة بروتوكولها https (صفحات GitHub مثلًا). متصفحات الهاتف لا تعطي الموقع لملف محفوظ محليًا.</p>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let cfg = null, last = null, watchId = null;
+
+// الإعدادات تُحمل من نهاية الرابط (#f=...&lat=...&lng=...)
+(function readCfg(){
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('f') && h.get('lat') && h.get('lng')) {
+    cfg = { url: decodeURIComponent(h.get('f')), lat: h.get('lat'), lng: h.get('lng') };
+    $('#setup').hidden = true;
+  }
+})();
+
+$('#make').onclick = () => {
+  const v = $('#pre').value.trim();
+  let u; try { u = new URL(v); } catch { return show('الرابط غير صالح. انسخه كاملًا من Google.'); }
+  let latE = '', lngE = '';
+  u.searchParams.forEach((val, key) => {
+    if (!key.startsWith('entry.')) return;
+    if (val === '11') latE = key;
+    if (val === '22') lngE = key;
+  });
+  if (!latE || !lngE) return show('لم أجد الخانتين. تأكد أنك كتبت 11 في خط العرض و22 في خط الطول قبل نسخ الرابط.');
+  const base = u.origin + u.pathname;
+  const link = location.origin + location.pathname + '#f=' + encodeURIComponent(base) + '&lat=' + latE + '&lng=' + lngE;
+  $('#out').innerHTML = '<p class="muted">هذا رابط الفريق. أرسله لهم وليضيفوه إلى الشاشة الرئيسية:</p>' +
+    '<input value="' + link + '" readonly>';
+  $('#out').querySelector('input').onclick = e => e.target.select();
+};
+function show(m){ $('#err').innerHTML = '<div class="err">' + m + '</div>'; }
+
+$('#btn').onclick = () => {
+  if (!navigator.geolocation) return show('المتصفح لا يدعم تحديد الموقع.');
+  $('#err').innerHTML = ''; $('#btn').disabled = true; $('#btn').textContent = 'جارٍ التقاط الموقع…';
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(p => {
+    last = p.coords;
+    $('#coords').textContent = p.coords.latitude.toFixed(6) + ', ' + p.coords.longitude.toFixed(6);
+    const a = Math.round(p.coords.accuracy);
+    const ok = a <= 15;
+    $('#acc').className = 'acc ' + (ok ? 'good' : 'bad');
+    $('#acc').textContent = ok ? ('الدقة ' + a + ' متر — ممتازة، يمكنك المتابعة')
+                               : ('الدقة ' + a + ' متر — انتظر قليلًا أو ابتعد عن الجدران');
+    $('#copy').hidden = false;
+    $('#go').hidden = !cfg;
+    $('#btn').disabled = false; $('#btn').textContent = 'أعد الالتقاط';
+  }, e => {
+    $('#btn').disabled = false; $('#btn').textContent = 'التقط الموقع';
+    show(e.code === 1 ? 'رُفض إذن الموقع. فعّله من إعدادات المتصفح لهذا الموقع.'
+       : e.code === 3 ? 'انتهت المهلة. اخرج إلى مكان مكشوف وأعد المحاولة.'
+       : 'تعذّر تحديد الموقع. تأكد أن GPS مفعّل في الهاتف.');
+  }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+};
+
+$('#copy').onclick = async () => {
+  if (!last) return;
+  const t = last.latitude.toFixed(6) + ', ' + last.longitude.toFixed(6);
+  try { await navigator.clipboard.writeText(t); $('#copy').textContent = 'نُسخت ✓'; setTimeout(()=>$('#copy').textContent='انسخ الإحداثيات',1500); }
+  catch { show('انسخها يدويًا: ' + t); }
+};
+
+$('#go').onclick = () => {
+  if (!last || !cfg) return;
+  const u = cfg.url + '?usp=pp_url&' + cfg.lat + '=' + last.latitude.toFixed(6) + '&' + cfg.lng + '=' + last.longitude.toFixed(6);
+  location.href = u;
+};
+</script>
+</body>
+</html>

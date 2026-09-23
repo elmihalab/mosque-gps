@@ -46,7 +46,8 @@ details summary{cursor:pointer;color:var(--forest-1)}
   <summary>الإعداد — مرة واحدة فقط، يقوم به المشرف</summary>
   <ol>
     <li>افتح استمارة Google من رابط التعديل ← النقاط الثلاث (⋮) ← <b>Get pre-filled link</b>.</li>
-    <li>في خانة خط العرض اكتب <b>11</b>، وفي خانة خط الطول اكتب <b>22</b>، ثم اضغط <b>Get link</b> ثم <b>Copy link</b>.</li>
+    <li>في خانة «الإحداثيات كما نسختها» اكتب <b>11,22</b> ثم اضغط <b>Get link</b> ثم <b>Copy link</b>.<br>
+      <span class="muted">إن كانت استمارتك القديمة بخانتين منفصلتين، اكتب 11 في الأولى و22 في الثانية؛ الصفحة تقبل الحالتين.</span></li>
     <li>الصق الرابط هنا واضغط «جهّز الرابط»:</li>
   </ol>
   <input id="pre" placeholder="الصق الرابط المُعبَّأ مسبقًا هنا" inputmode="url">
@@ -64,7 +65,10 @@ let cfg = null, last = null, watchId = null;
 // الإعدادات تُحمل من نهاية الرابط (#f=...&lat=...&lng=...)
 (function readCfg(){
   const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get('f') && h.get('lat') && h.get('lng')) {
+  if (h.get('f') && h.get('c')) {
+    cfg = { url: decodeURIComponent(h.get('f')), one: h.get('c') };
+    $('#setup').hidden = true;
+  } else if (h.get('f') && h.get('lat') && h.get('lng')) {
     cfg = { url: decodeURIComponent(h.get('f')), lat: h.get('lat'), lng: h.get('lng') };
     $('#setup').hidden = true;
   }
@@ -73,15 +77,19 @@ let cfg = null, last = null, watchId = null;
 $('#make').onclick = () => {
   const v = $('#pre').value.trim();
   let u; try { u = new URL(v); } catch { return show('الرابط غير صالح. انسخه كاملًا من Google.'); }
-  let latE = '', lngE = '';
+  let latE = '', lngE = '', oneE = '';
   u.searchParams.forEach((val, key) => {
     if (!key.startsWith('entry.')) return;
-    if (val === '11') latE = key;
-    if (val === '22') lngE = key;
+    const v = String(val).replace(/\s|،/g, m => m === '،' ? ',' : '');
+    if (v === '11,22') oneE = key;
+    if (v === '11') latE = key;
+    if (v === '22') lngE = key;
   });
-  if (!latE || !lngE) return show('لم أجد الخانتين. تأكد أنك كتبت 11 في خط العرض و22 في خط الطول قبل نسخ الرابط.');
+  if (!oneE && !(latE && lngE))
+    return show('لم أجد خانة الموقع. تأكد أنك كتبت 11,22 في خانة الإحداثيات (أو 11 و22 في الخانتين) قبل نسخ الرابط.');
   const base = u.origin + u.pathname;
-  const link = location.origin + location.pathname + '#f=' + encodeURIComponent(base) + '&lat=' + latE + '&lng=' + lngE;
+  const link = location.origin + location.pathname + '#f=' + encodeURIComponent(base) +
+    (oneE ? '&c=' + oneE : '&lat=' + latE + '&lng=' + lngE);
   $('#out').innerHTML = '<p class="muted">هذا رابط الفريق. أرسله لهم وليضيفوه إلى الشاشة الرئيسية:</p>' +
     '<input value="' + link + '" readonly>';
   $('#out').querySelector('input').onclick = e => e.target.select();
@@ -120,7 +128,10 @@ $('#copy').onclick = async () => {
 
 $('#go').onclick = () => {
   if (!last || !cfg) return;
-  const u = cfg.url + '?usp=pp_url&' + cfg.lat + '=' + last.latitude.toFixed(6) + '&' + cfg.lng + '=' + last.longitude.toFixed(6);
+  const la = last.latitude.toFixed(6), ln = last.longitude.toFixed(6);
+  const u = cfg.one
+    ? cfg.url + '?usp=pp_url&' + cfg.one + '=' + encodeURIComponent(la + ', ' + ln)
+    : cfg.url + '?usp=pp_url&' + cfg.lat + '=' + la + '&' + cfg.lng + '=' + ln;
   location.href = u;
 };
 </script>
